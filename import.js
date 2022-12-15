@@ -15,6 +15,7 @@ const config = env.getOrElseAll({
         $type: env.types.String,
       }
     },
+    runWithoutPosting: false, // For testing if all files are present
     postMedia: false,
     addDateFromTweet: false, // Adds '(15/9/2022) ' before the post (format depending on OS or below settings)
     changeDateLocaleTo: "", // Will default to OS settings
@@ -115,52 +116,106 @@ async function importTweets(tweets) {
       const mediaToUpload = tweet.extended_entities.media
 
       for(let i=0; i<mediaToUpload.length; i++){
-        const fileName = tweet.id + '-' + mediaToUpload[i].media_url_https.replace('https://pbs.twimg.com/media/', '')
-        const filePath = path.join(config.twitter.mediaPath, fileName)
-        if(!fs.existsSync(filePath)){
-          console.error("File doesn't exist at", filePath)
-          console.error("-> Quitting")
+        const fileNames = getPotentialFilesNames(tweet.id, mediaToUpload[i])
+
+        let foundFilePath = ""
+        fileNames.forEach((fileName) => {
+          const filePath = path.join(config.twitter.mediaPath, fileName)
+          if(fs.existsSync(filePath)){
+            foundFilePath = filePath
+          }
+        })
+
+        if(foundFilePath === ""){
+          console.error("Couldn't find a file for tweet", tweet)
           process.exit()
         }
         
-        const response = await uploadMediaAsAttachment(
-          {
-            apiToken: config.mastodon.api.key,
-            baseURL: config.mastodon.api.basePath
-          },
-          {
-            fileData: fs.readFileSync(filePath),
-            fileName: fileName
+        if(!config.mastodon.runWithoutPosting){
+          const response = await uploadMediaAsAttachment(
+            {
+              apiToken: config.mastodon.api.key,
+              baseURL: config.mastodon.api.basePath
+            },
+            {
+              fileData: fs.readFileSync(filePath),
+              fileName: fileName
+            }
+          )
+          if(response.id){
+            mediaIds.push(response.id)
+          }else{
+            console.error("Uploading of", fileName, "failed")
+            console.error("-> Quitting")
+            process.exit()
           }
-        )
-        if(response.id){
-          mediaIds.push(response.id)
-        }else{
-          console.error("Uploading of", fileName, "failed")
-          console.error("-> Quitting")
-          process.exit()
         }
       }
     }
 
     // 3. Do the actual post
-    createMastodonPost({
-        apiToken: config.mastodon.api.key,
-        baseURL: config.mastodon.api.basePath
-      },{
-        status: replaceTwitterUrls(postText,tweet.entities.urls),
-        language: tweet.lang,
-        mediaIds: mediaIds
-    })
-    .then((mastodonPost) => {
-      debug('%s/%i Created post %s', current, max, mastodonPost.url);
-      progress.addTick();
-      next();
-    }).catch(err => {
-      console.log(err);
-    });
+    if(config.mastodon.runWithoutPosting){
+      replaceTwitterUrls(postText,tweet.entities.urls)
+      debug('%s/%i Tested post %s', current, max);
+      next()
+    }else{
+      createMastodonPost({
+          apiToken: config.mastodon.api.key,
+          baseURL: config.mastodon.api.basePath
+        },{
+          status: replaceTwitterUrls(postText,tweet.entities.urls),
+          language: tweet.lang,
+          mediaIds: mediaIds
+      })
+      .then((mastodonPost) => {
+        debug('%s/%i Created post %s', current, max, mastodonPost.url);
+        progress.addTick();
+        next();
+      }).catch(err => {
+        console.log(err);
+      });
+    }
   }
 }
+
+function getPotentialFilesNames(tweetId, mediaInfo){
+  // Note: There is no ID stated in the data so we have to search for it in the linked URLs
+  let fileNames = []
+
+  // For images:
+  if(mediaInfo.media_url_https.indexOf('/tweet_video_thumb/') === -1 && mediaInfo.media_url_https.indexOf('ext_tw_video_thumb') === -1){
+    // Skip if it's just a video preview image
+    fileNames.push(tweetId + '-' + mediaInfo.media_url_https.replace('https://pbs.twimg.com/media/', ''))
+  }
+
+  // For videos:
+  // - type 1: https://video.twimg.com/tweet_video/CAi7qu9WsAAzIFN.mp4
+  // - type 2: https://video.twimg.com/ext_tw_video/1447583706231754753/pu/vid/1400x720/4jlDG9ltqjK9xJS4.mp4?tag=12
+  // - type 3: https://video.twimg.com/ext_tw_video/936751020130041856/pu/vid/318x180/btpl6IDgJPkZWH3u.mp4
+
+  mediaInfo.video_info?.variants.forEach((variant) => {
+    // For type 1
+    if(variant.url.indexOf('video.twimg.com/tweet_video/') !== -1){
+      const fileId1 = tweetId + '-' + variant.url.replace('https://', '').replace('http://', '').replace('video.twimg.com/tweet_video/', '')
+      fileNames.push(fileId1)
+    }
+
+    // For type 2 and 3
+    const urlPartWithId = variant.url.match(/(\/vid\/).*?((?=\?)|$)/)?.[0]
+    if(urlPartWithId){
+      let fileId2 = urlPartWithId.replace('/vid/', '')
+      let parts = fileId2.split('/')
+      parts.shift()
+      fileId2 = parts.join('/')
+      fileId2 = tweetId + '-' + fileId2
+      fileNames.push(fileId2)
+    }
+  })
+  
+
+  return fileNames
+}
+
 function replaceTwitterUrls(full_text, urls) {
   urls.forEach(url => {
     full_text=full_text.replace(url.url,url.expanded_url);
