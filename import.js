@@ -65,17 +65,17 @@ function getTweets() {
       return false;
     }
 
-    if (!config.twitter.excludeReplies) {
-      return true;
-    }
-
-    if (config.twitter.excludeRetweets && tweet.full_text.indexOf('RT @') == 0) {
+    if (config.twitter.excludeRetweets && tweet.full_text.startsWith('RT @')) {
       // Apparently retweets Tweets start with "RT @"
       // Weirdly the property "retweeted" is false
       return false;
     }
 
-    return !tweet.full_text.startsWith('@');
+    if (config.twitter.excludeReplies && tweet.full_text.startsWith('@')) {
+      return false;
+    }
+
+    return true
   }
 
   return tweets;
@@ -108,7 +108,7 @@ async function importTweets(tweets) {
 
     // 2. Load and upload media files as attachments
     let mediaIds = []
-    if(config.mastodon.postMedia && tweet.extended_entities.media){
+    if(config.mastodon.postMedia && tweet.extended_entities?.media){
       if(config.twitter.mediaPath == ""){
         console.error('Please specify the path to the Twitter media folder')
       }
