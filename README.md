@@ -22,7 +22,7 @@ git clone https://github.com/FGRibreau/import-tweets-to-mastodon.git
 ```
 Or download the zip and extract in Desktop.
 ### #4 - Set an API key from Mastodon
-To request an API key from Mastodon, click [here](https://mastodon.cloud/settings/applications). Create an new application in "New Application". Set an Application Name (e. g.: api-mastodon-twitter) and, at the end of page, click in "Submit". 
+To request an API key from Mastodon, click [here](https://mastodon.cloud/settings/applications) if you are on mastodon.social, otherwise go to `https://{your-mastodon.instance}/settings/applications`. Create an new application in "New Application". Set an Application Name (e. g.: api-mastodon-twitter) and, at the end of page, click in "Submit". 
 ### #5 - Set the environment variables
 #### Windows
 1. Copy your "Your access token" from developer's page in Mastodon;
@@ -64,6 +64,30 @@ After this
 node import.js
 
 ```
+
+### #7 Example configuration
+- `export MASTODON_API_BASEPATH=https://mastodon.social`
+	- → If you are on https://mastodon.social
+- `export MASTODON_API_KEY=y8LptTshBDs4LmL3WTZxINgl4gHFPB0-mOzspqeIinM`
+	- → The API key
+- `export TWITTER_TWEETJS_FILEPATH=../twitter-data/data/tweets.js`
+	- → Location of the tweets.js file
+- `export TWITTER_LIMITNUMBEROFTWEETS=100`
+	- → Only post the last 100 Tweets
+- `export TWITTER_EXCLUDERETWEETS=true`
+	- → Don't post Retweets
+- `export MASTODON_ADDDATEFROMTWEET=true`
+	- → Add a date for context, e.g. "(14/9/2017) This is a tweet"
+- `export MASTODON_CHANGEDATELOCALETO=DE`
+	- → Choose locale (DE = Germany) which affects the date format, e.g. "14/9/2017" in France or "14.9.2017" in Germany
+- `export TWITTER_LIMITTWEETSTOSETYEAR=false`
+	- → Post from all years
+- `export MASTODON_POSTMEDIA=true`
+	- → Attach media (photos and videos) from original Tweets
+-  `export TWITTER_MEDIAPATH=../twitter-data/data/tweets_media/`
+	- → Where are is the media folder located
+-  `export MASTODON_TIMEOUTBETWEENPOSTS=120`
+	- → Time between posts, necessary due to [rate limit](https://docs.joinmastodon.org/api/rate-limits/#uploading-media) (= less than 1 post/minute when media-heavy)
 
 #### Need help?
 
