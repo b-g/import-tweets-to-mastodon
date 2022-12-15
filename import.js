@@ -119,10 +119,12 @@ async function importTweets(tweets) {
         const fileNames = getPotentialFilesNames(tweet.id, mediaToUpload[i])
 
         let foundFilePath = ""
+        let foundFileName = ""
         fileNames.forEach((fileName) => {
           const filePath = path.join(config.twitter.mediaPath, fileName)
           if(fs.existsSync(filePath)){
             foundFilePath = filePath
+            foundFileName = fileName
           }
         })
 
@@ -138,14 +140,14 @@ async function importTweets(tweets) {
               baseURL: config.mastodon.api.basePath
             },
             {
-              fileData: fs.readFileSync(filePath),
-              fileName: fileName
+              fileData: fs.readFileSync(foundFilePath),
+              fileName: foundFileName
             }
           )
           if(response.id){
             mediaIds.push(response.id)
           }else{
-            console.error("Uploading of", fileName, "failed")
+            console.error("Uploading of", foundFileName, "failed")
             console.error("-> Quitting")
             process.exit()
           }
