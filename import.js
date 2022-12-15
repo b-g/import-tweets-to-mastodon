@@ -15,6 +15,7 @@ const config = env.getOrElseAll({
   twitter: {
     limitNumberOfTweets: -1, // -1 means publish all tweets
     excludeReplies: true,
+    excludeRetweets: false,
     year: new Date().getFullYear(),
     tweetjs: {
       filepath: {
@@ -57,6 +58,12 @@ function getTweets() {
 
     if (!config.twitter.excludeReplies) {
       return true;
+    }
+
+    if (config.twitter.excludeRetweets && tweet.full_text.indexOf('RT @') == 0) {
+      // Apparently retweets Tweets start with "RT @"
+      // Weirdly the property "retweeted" is false
+      return false;
     }
 
     return !tweet.full_text.startsWith('@');
