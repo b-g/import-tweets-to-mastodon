@@ -65,6 +65,8 @@ function importTweets(tweets) {
 
   progress.setTotal(max);
 
+  next(); // Starts the process
+
   function next() {
     const tweet = tweets.pop();
     let current = 0;
