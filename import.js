@@ -15,6 +15,7 @@ const config = env.getOrElseAll({
         $type: env.types.String,
       }
     },
+    timeoutBetweenPosts: 0, // (in seconds) Due to API rate limits https://docs.joinmastodon.org/api/rate-limits/#limits
     runWithoutPosting: false, // For testing if all files are present
     postMedia: false,
     addDateFromTweet: false, // Adds '(15/9/2022) ' before the post (format depending on OS or below settings)
@@ -169,9 +170,14 @@ async function importTweets(tweets) {
           language: tweet.lang,
           mediaIds: mediaIds
       })
-      .then((mastodonPost) => {
+      .then(async (mastodonPost) => {
         debug('%s/%i Created post %s', current, max, mastodonPost.url);
         progress.addTick();
+
+        if(config.mastodon.timeoutBetweenPosts > 0 && tweets.length > 0){
+          await timeout(config.mastodon.timeoutBetweenPosts * 1000);
+        }
+
         next();
       }).catch(err => {
         console.log(err);
@@ -216,6 +222,10 @@ function getPotentialFilesNames(tweetId, mediaInfo){
   
 
   return fileNames
+}
+
+function timeout(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function replaceTwitterUrls(full_text, urls) {
