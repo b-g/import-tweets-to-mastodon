@@ -13,6 +13,7 @@ const config = env.getOrElseAll({
     }
   },
   twitter: {
+    limitNumberOfTweets: -1, // -1 means publish all tweets
     excludeReplies: true,
     year: new Date().getFullYear(),
     tweetjs: {
@@ -39,9 +40,13 @@ function getTweets() {
   const context = vm.createContext(_global);
   script.runInContext(context);
 
-  const tweets = Object.keys(_global.window.YTD.tweets.part0).reduce((m, key, i, obj) => {
+  let tweets = Object.keys(_global.window.YTD.tweets.part0).reduce((m, key, i, obj) => {
     return m.concat(_global.window.YTD.tweets.part0[key].tweet);
   }, []).filter(_keepTweet)
+
+  if(config.twitter.limitNumberOfTweets !== -1){
+    tweets = tweets.slice(0, config.twitter.limitNumberOfTweets)
+  }
 
   debug('Loading %s tweets...', tweets.length);
 
