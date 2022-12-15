@@ -1,5 +1,6 @@
 const debug = require('debug')('import');
 const axios = require('axios');
+const moment = require('moment');
 const env = require('common-env/withLogger')(console);
 const config = env.getOrElseAll({
   mastodon: {
@@ -10,12 +11,15 @@ const config = env.getOrElseAll({
       basePath: {
         $type: env.types.String,
       }
-    }
+    },
+    addDateFromTweet: false, // Adds '(15/9/2022) ' before the post (format depending on OS or below settings)
+    changeDateLocaleTo: "", // Will default to OS settings
   },
   twitter: {
     limitNumberOfTweets: -1, // -1 means publish all tweets
     excludeReplies: true,
     excludeRetweets: false,
+    limitTweetsToSetYear: true,
     year: new Date().getFullYear(),
     tweetjs: {
       filepath: {
@@ -52,7 +56,7 @@ function getTweets() {
   debug('Loading %s tweets...', tweets.length);
 
   function _keepTweet(tweet) {
-    if (!tweet.created_at.endsWith(config.twitter.year)) {
+    if (config.twitter.limitTweetsToSetYear && !tweet.created_at.endsWith(config.twitter.year)) {
       return false;
     }
 
@@ -86,11 +90,23 @@ function importTweets(tweets) {
       debug('Tweets import completed');
       return;
     }
+
+    let postText = tweet.full_text
+    if(config.mastodon.addDateFromTweet){
+      // Example from tweets.js "Mon Nov 02 23:45:58 +0000 2015"
+  
+      const tweetDate = moment(tweet.created_at, 'ddd MMM DD HH:mm:ss +-HHmm YYYY', 'en')
+      if(config.mastodon.changeDateLocaleTo !== ""){
+        tweetDate.locale(config.mastodon.changeDateLocaleTo)
+      }
+      postText = `(${tweetDate.format('l')}) ${postText}`
+    }
+
     createMastodonPost({
       apiToken: config.mastodon.api.key,
       baseURL: config.mastodon.api.basePath
     },{
-      status: replaceTwitterUrls(tweet.full_text,tweet.entities.urls),
+      status: replaceTwitterUrls(postText,tweet.entities.urls),
       language: tweet.lang
     }).then((mastodonPost) => {
       debug('%s/%i Created post %s', current, max, mastodonPost.url);
