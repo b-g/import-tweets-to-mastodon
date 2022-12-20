@@ -75,9 +75,9 @@ function getTweets() {
     tweets = tweets.slice(tweets.length - config.twitter.limitNumberOfTweets)
   }
 
-  tweets.forEach((tweet, index) => {
-    console.log(index + 1, tweets.length - index, tweet.created_at)
-  })
+  // tweets.forEach((tweet, index) => {
+  //   console.log(index + 1, tweets.length - index, tweet.created_at)
+  // })
 
   debug('Loading %s tweets...', tweets.length);
 
