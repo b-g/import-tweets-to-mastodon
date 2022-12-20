@@ -62,17 +62,17 @@ function getTweets() {
   tweets = tweets.sort((a, b) => {
     const dateA = moment(a.created_at, twitterDateFormat, 'en').unix()
     const dateB = moment(b.created_at, twitterDateFormat, 'en').unix()
-    if (dateA < dateB) {
+    if (dateA > dateB) {
       return -1;
     }
-    if (dateA > dateB) {
+    if (dateA < dateB) {
       return 1;
     }
     return 0;
   });
 
   if(config.twitter.limitNumberOfTweets !== -1){
-    tweets = tweets.slice(tweets.length - config.twitter.limitNumberOfTweets)
+    tweets = tweets.slice(0, config.twitter.limitNumberOfTweets)
   }
 
   // tweets.forEach((tweet, index) => {
@@ -154,7 +154,9 @@ async function importTweets(tweets) {
           process.exit()
         }
         
-        if(!config.mastodon.runWithoutPosting){
+        if(config.mastodon.runWithoutPosting == true){
+          // Don't upload media
+        }else{
           const response = await uploadMediaAsAttachment(
             {
               apiToken: config.mastodon.api.key,
@@ -168,7 +170,8 @@ async function importTweets(tweets) {
           if(response.id){
             mediaIds.push(response.id)
           }else{
-            console.error("Uploading of", foundFileName, "failed")
+            console.error("Uploading of", foundFileName, "failed (probably due to rate limit)")
+            console.error("Response:", response)
             console.error("-> Quitting")
             process.exit()
           }
@@ -177,9 +180,10 @@ async function importTweets(tweets) {
     }
 
     // 3. Do the actual post
-    if(config.mastodon.runWithoutPosting){
+    if(config.mastodon.runWithoutPosting == true){
       replaceTwitterUrls(postText,tweet.entities.urls)
-      debug('%s/%i Tested post %s', current, max);
+      debug('%s/%i Tested post %s', current, max, '-');
+      progress.addTick();
       next()
     }else{
       createMastodonPost({
