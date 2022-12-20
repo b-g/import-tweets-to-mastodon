@@ -170,8 +170,8 @@ async function importTweets(tweets) {
           if(response.id){
             mediaIds.push(response.id)
           }else{
-            console.error("Uploading of", foundFileName, "failed (probably due to rate limit)")
             console.error("Response:", response)
+            console.error("Uploading of", foundFileName, "failed (probably due to rate limit)")
             console.error("-> Quitting")
             process.exit()
           }
@@ -204,7 +204,10 @@ async function importTweets(tweets) {
 
         next();
       }).catch(err => {
-        console.log(err);
+        console.error(err);
+        console.error("Posting failed (see error above) for following tweet:", postText)
+        console.error("-> Quitting")
+        process.exit()
       });
     }
   }
