@@ -18,7 +18,8 @@ const config = env.getOrElseAll({
     timeoutBetweenPosts: 0, // (in seconds) Due to API rate limits https://docs.joinmastodon.org/api/rate-limits/#limits
     runWithoutPosting: false, // For testing if all files are present
     postMedia: false,
-    addDateFromTweet: false, // Adds '(15/9/2022) ' before the post (format depending on OS or below settings)
+    addDateFromTweet: false, // Adds '15/9/2022' before the post (format depending on OS or below settings)
+    dateText: 'Originally on Twitter ({date}):\n\n',
     changeDateLocaleTo: "", // Will default to OS settings
   },
   twitter: {
@@ -105,7 +106,8 @@ async function importTweets(tweets) {
       if(config.mastodon.changeDateLocaleTo !== ""){
         tweetDate.locale(config.mastodon.changeDateLocaleTo)
       }
-      postText = `(${tweetDate.format('l')}) ${postText}`
+      const addedDateText = config.mastodon.dateText.replace('{date}', tweetDate.format('l'))
+      postText = `${addedDateText}${postText}`
     }
 
     // 2. Load and upload media files as attachments
