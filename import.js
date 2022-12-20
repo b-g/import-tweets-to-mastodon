@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 const env = require('common-env/withLogger')(console);
+const twitterDateFormat = 'ddd MMM DD HH:mm:ss +-HHmm YYYY';
 const config = env.getOrElseAll({
   mastodon: {
     api: {
@@ -57,9 +58,26 @@ function getTweets() {
     return m.concat(_global.window.YTD.tweets.part0[key].tweet);
   }, []).filter(_keepTweet)
 
+  // Sort by date (tweet.js-data is not in order)
+  tweets = tweets.sort((a, b) => {
+    const dateA = moment(a.created_at, twitterDateFormat, 'en').unix()
+    const dateB = moment(b.created_at, twitterDateFormat, 'en').unix()
+    if (dateA < dateB) {
+      return -1;
+    }
+    if (dateA > dateB) {
+      return 1;
+    }
+    return 0;
+  });
+
   if(config.twitter.limitNumberOfTweets !== -1){
-    tweets = tweets.slice(0, config.twitter.limitNumberOfTweets)
+    tweets = tweets.slice(tweets.length - config.twitter.limitNumberOfTweets)
   }
+
+  tweets.forEach((tweet, index) => {
+    console.log(index + 1, tweets.length - index, tweet.created_at)
+  })
 
   debug('Loading %s tweets...', tweets.length);
 
@@ -102,7 +120,7 @@ async function importTweets(tweets) {
     // 1. Prepare post text
     let postText = tweet.full_text
     if(config.mastodon.addDateFromTweet){
-      const tweetDate = moment(tweet.created_at, 'ddd MMM DD HH:mm:ss +-HHmm YYYY', 'en') // Date format example from tweets.js: "Mon Nov 02 23:45:58 +0000 2015"
+      const tweetDate = moment(tweet.created_at, twitterDateFormat, 'en') // Date format example from tweets.js: "Mon Nov 02 23:45:58 +0000 2015"
       if(config.mastodon.changeDateLocaleTo !== ""){
         tweetDate.locale(config.mastodon.changeDateLocaleTo)
       }
