@@ -81,12 +81,18 @@ node import.js
 | MASTODON_POSTMEDIA           | false                                          | Whether media (images and video) should be posted                                                                                                               |
 | TWITTER_MEDIAPATH            |                                                | Path to media folder, e.g. ` ../twitter-data/data/tweets_media/`                                                                                                |
 |                              |                                                |                                                                                                                                                                 |
-| MASTODON_TIMEOUTBETWEENPOSTS | 0                                              | Time in seconds between posts, necessary due to  [rate limit](https://docs.joinmastodon.org/api/rate-limits/#uploading-media) (= less than 1 post/minute when media-heavy) |
+| MASTODON_TIMEOUTBETWEENPOSTS | 0                                              | Time in seconds between posts, necessary due to  [rate limit](https://docs.joinmastodon.org/api/rate-limits/#uploading-media) (= less than 1 post/minute when media-heavy). Combine with `MASTODON_TIMEOUTBETWEENMEDIAUPLOADS` for the right amount. |
+| MASTODON_TIMEOUTBETWEENMEDIAUPLOADS | 10                                              | Time in seconds between media uploads, necessary because especially videos need some time processing |
 | MASTODON_ADDDATEFROMTWEET    | false                                          |                                                                                                                                                                 |
 | MASTODON_DATETEXT            | `Originally on Twitter ({date}): \n\n`         | If a date should be added, which text should be added (`{date}` will be replaced by the date)                                                                   |
 | MASTODON_CHANGEDATELOCALETO  | (if not specified uses your computer's locale) | The set locale (DE = Germany) which affects the date format, e.g. "14/9/2017" in France or "14.9.2017" in Germany                                               |
 | MASTODON_RUNWITHOUTPOSTING   | false                                          | (For testing) You can use to check if all files and data was correct                                                                                            |
 | TWITTER_LIMITNUMBEROFTWEETS  | -1 (= no limit)                                | Only post the last (=newest) x number of Tweets                                                                                                                 |
+
+#### Example for a reasonable configuration
+```
+export MASTODON_API_BASEPATH=https://mastodon.social MASTODON_API_KEY=y8LptTshBDs4LmL3WTZxINgl4gHFPB0-mOzspqeIinM TWITTER_TWEETJS_FILEPATH=../twitter-data/data/tweets.js TWITTER_EXCLUDERETWEETS=true, MASTODON_ADDDATEFROMTWEET=true MASTODON_CHANGEDATELOCALETO=DE TWITTER_LIMITTWEETSTOSETYEAR=false MASTODON_POSTMEDIA=true TWITTER_MEDIAPATH=../twitter-data/data/tweets_media/ MASTODON_TIMEOUTBETWEENPOSTS=10 MASTODON_TIMEOUTBETWEENMEDIAUPLOADS=40 MASTODON_PRESERVETHREADS=true
+```
 
 ### Need help?
 

@@ -6,6 +6,7 @@ const path = require('path');
 const moment = require('moment');
 const env = require('common-env/withLogger')(console);
 const twitterDateFormat = 'ddd MMM DD HH:mm:ss +-HHmm YYYY';
+let twitterPostIdMastodonLookupTable = {}
 const config = env.getOrElseAll({
   mastodon: {
     api: {
@@ -16,7 +17,9 @@ const config = env.getOrElseAll({
         $type: env.types.String,
       }
     },
-    timeoutBetweenPosts: 0, // (in seconds) Due to API rate limits https://docs.joinmastodon.org/api/rate-limits/#limits
+    preserveThreads: false,
+    timeoutBetweenPosts: 0, // in seconds
+    timeoutBetweenMediaUploads: 10, // in seconds
     runWithoutPosting: false, // For testing if all files are present
     postMedia: false,
     addDateFromTweet: false, // Adds '15/9/2022' before the post (format depending on OS or below settings)
@@ -167,6 +170,9 @@ async function importTweets(tweets) {
               fileName: foundFileName
             }
           )
+
+          await timeout(config.mastodon.timeoutBetweenMediaUploads * 1000);
+
           if(response.id){
             mediaIds.push(response.id)
           }else{
@@ -180,21 +186,41 @@ async function importTweets(tweets) {
     }
 
     // 3. Do the actual post
+    postText = replaceTwitterUrls(postText,tweet.entities.urls)
+    let inReplyToId = ""
+    const tweetIdRepliedTo = tweet.in_reply_to_status_id
+    if(config.mastodon.preserveThreads && twitterPostIdMastodonLookupTable[tweetIdRepliedTo]){
+      inReplyToId = twitterPostIdMastodonLookupTable[tweetIdRepliedTo]    
+    }
+    
     if(config.mastodon.runWithoutPosting == true){
-      replaceTwitterUrls(postText,tweet.entities.urls)
       debug('%s/%i Tested post %s', current, max, '-');
+      console.log("")
+      console.log("—————————", current, "of", max,"—————————")
+      if(inReplyToId !== ""){
+        console.log("Is reply to ID:", inReplyToId)
+      }
+      console.log(postText)
+      var simulatedMastodonPostId = Math.round(Math.random()*100000)
+      twitterPostIdMastodonLookupTable[tweet.id] = simulatedMastodonPostId // Simulate receiving an id from Mastodon to test replies
+      //console.log(twitterPostIdMastodonLookupTable)
+      console.log("-> ID", simulatedMastodonPostId)
       progress.addTick();
       next()
     }else{
       createMastodonPost({
           apiToken: config.mastodon.api.key,
           baseURL: config.mastodon.api.basePath
-        },{
-          status: replaceTwitterUrls(postText,tweet.entities.urls),
+        }, {
+          status: postText,
           language: tweet.lang,
+          inReplyToId: inReplyToId,
           mediaIds: mediaIds
-      })
+        })
       .then(async (mastodonPost) => {
+
+        twitterPostIdMastodonLookupTable[tweet.id] = mastodonPost.id
+
         debug('%s/%i Created post %s', current, max, mastodonPost.url);
         progress.addTick();
 
@@ -291,6 +317,7 @@ function createMastodonPost({
 }, {
   status,
   language,
+  inReplyToId,
   mediaIds
 }) {
   return axios({
@@ -303,6 +330,7 @@ function createMastodonPost({
     data: {
       status,
       language,
+      in_reply_to_id: inReplyToId,
       media_ids: mediaIds,
       visibility: "public"
     }
