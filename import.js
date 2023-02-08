@@ -156,7 +156,7 @@ async function importTweets(tweets) {
           console.error("Couldn't find a file for tweet", tweet)
           process.exit()
         }
-        
+
         if(config.mastodon.runWithoutPosting == true){
           // Don't upload media
         }else{
@@ -187,12 +187,13 @@ async function importTweets(tweets) {
 
     // 3. Do the actual post
     postText = replaceTwitterUrls(postText,tweet.entities.urls)
+    postText = expandTwitterHandles(postText)
     let inReplyToId = ""
     const tweetIdRepliedTo = tweet.in_reply_to_status_id
     if(config.mastodon.preserveThreads && twitterPostIdMastodonLookupTable[tweetIdRepliedTo]){
-      inReplyToId = twitterPostIdMastodonLookupTable[tweetIdRepliedTo]    
+      inReplyToId = twitterPostIdMastodonLookupTable[tweetIdRepliedTo]
     }
-    
+
     if(config.mastodon.runWithoutPosting == true){
       debug('%s/%i Tested post %s', current, max, '-');
       console.log("")
@@ -272,7 +273,7 @@ function getPotentialFilesNames(tweetId, mediaInfo){
       fileNames.push(fileId2)
     }
   })
-  
+
 
   return fileNames
 }
@@ -286,6 +287,12 @@ function replaceTwitterUrls(full_text, urls) {
     full_text=full_text.replace(url.url,url.expanded_url);
   });
   return full_text;
+}
+
+function expandTwitterHandles(full_text) {
+  return full_text.replace(/@\w+/g, handle => {
+    return `${handle}@twitter.com`;
+  });
 }
 
 function uploadMediaAsAttachment({
