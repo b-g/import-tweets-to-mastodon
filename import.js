@@ -25,6 +25,7 @@ const config = env.getOrElseAll({
     addDateFromTweet: false, // Adds '15/9/2022' before the post (format depending on OS or below settings)
     dateText: 'Originally on Twitter ({date}):\n\n',
     changeDateLocaleTo: "", // Will default to OS settings
+    visibility: "public" // public, unlisted, private, direct
   },
   twitter: {
     limitNumberOfTweets: -1, // -1 means publish all tweets
@@ -127,7 +128,8 @@ async function importTweets(tweets) {
       if(config.mastodon.changeDateLocaleTo !== ""){
         tweetDate.locale(config.mastodon.changeDateLocaleTo)
       }
-      const addedDateText = config.mastodon.dateText.replace('{date}', tweetDate.format('l'))
+      let addedDateText = config.mastodon.dateText.replace('{date}', tweetDate.format('l'))
+      addedDateText = addedDateText.replace(/\\n/g, '\n') // respect linebreaks in dateText env args
       postText = `${addedDateText}${postText}`
     }
 
@@ -216,7 +218,8 @@ async function importTweets(tweets) {
           status: postText,
           language: tweet.lang,
           inReplyToId: inReplyToId,
-          mediaIds: mediaIds
+          mediaIds: mediaIds,
+          visibility: config.mastodon.visibility
         })
       .then(async (mastodonPost) => {
 
@@ -325,7 +328,8 @@ function createMastodonPost({
   status,
   language,
   inReplyToId,
-  mediaIds
+  mediaIds,
+  visibility
 }) {
   return axios({
     url: '/api/v1/statuses',
@@ -339,7 +343,7 @@ function createMastodonPost({
       language,
       in_reply_to_id: inReplyToId,
       media_ids: mediaIds,
-      visibility: "public"
+      visibility: visibility
     }
   }).then(function(response) {
     return response.data
