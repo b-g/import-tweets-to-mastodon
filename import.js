@@ -190,6 +190,7 @@ async function importTweets(tweets) {
     // 3. Do the actual post
     postText = replaceTwitterUrls(postText,tweet.entities.urls)
     postText = expandTwitterHandles(postText)
+    postText = postText.replace(/&amp;/g, "&")
     let inReplyToId = ""
     const tweetIdRepliedTo = tweet.in_reply_to_status_id
     if(config.mastodon.preserveThreads && twitterPostIdMastodonLookupTable[tweetIdRepliedTo]){
